@@ -1687,6 +1687,47 @@ class DetokenizeResponse(OpenAIBaseModel):
     prompt: str
 
 
+class TokenizerInfoResponse(OpenAIBaseModel):
+    """Comprehensive tokenizer information response."""
+
+    # Core info
+    tokenizer_type: str
+    vocab_size: int
+    tokenizer_backend: str
+    is_cached: bool = False
+    is_fast: bool = False
+    max_token_id: Optional[int] = None
+
+    # Model info
+    model_name: str
+    tokenizer_name: Optional[str] = None
+    tokenizer_mode: str = "auto"
+    trust_remote_code: bool = False
+    tokenizer_revision: Optional[str] = None
+    is_gguf: bool = False
+    gguf_file: Optional[str] = None
+
+    # Special tokens (this covers the important token info)
+    special_tokens: dict[str, int] = Field(default_factory=dict)
+
+    # HuggingFace attributes
+    model_max_length: Optional[int] = None
+    truncation_side: str = "right"
+    padding_side: str = "right"
+    clean_up_tokenization_spaces: bool = True
+
+    # Capabilities
+    supports_encoding: bool = True
+    supports_decoding: bool = True
+
+    # Chat template
+    has_chat_template: bool = False
+    chat_template: Optional[str] = None
+    chat_template_source: str = "none"
+    supports_system_message: bool = False
+    supports_tools: bool = False
+    
+    
 class LoadLoRAAdapterRequest(BaseModel):
     lora_name: str
     lora_path: str
