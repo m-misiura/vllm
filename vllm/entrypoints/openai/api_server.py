@@ -525,9 +525,9 @@ async def detokenize(request: DetokenizeRequest, raw_request: Request):
 
 
 @router.get("/get_tokenizer_info")
-async def get_tokenizer_info(raw_request: Request):
+async def get_tokenizer_info(raw_request: Request, include_chat_template: bool = False):
     """Get comprehensive tokenizer information."""
-    result = await tokenization(raw_request).get_tokenizer_info()
+    result = await tokenization(raw_request).get_tokenizer_info(include_chat_template)
     return JSONResponse(
         content=result.model_dump(),
         status_code=result.code if isinstance(result, ErrorResponse) else 200)

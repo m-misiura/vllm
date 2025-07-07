@@ -161,17 +161,19 @@ class OpenAIServingTokenization(OpenAIServing):
 
         return DetokenizeResponse(prompt=input_text)
 
-    async def get_tokenizer_info(
-            self) -> Union[TokenizerInfoResponse, ErrorResponse]:
+    async def get_tokenizer_info(self, include_chat_template: bool = False) -> Union[TokenizerInfoResponse, ErrorResponse]:
         """Get comprehensive tokenizer information."""
         try:
             tokenizer = await self.engine_client.get_tokenizer()
-            info = TokenizerInfo(tokenizer, self.model_config,
-                                 self.chat_template).to_dict()
+            chat_template = None
+            if include_chat_template:
+                chat_template = getattr(tokenizer, 'chat_template', None) or self.chat_template
+            info = TokenizerInfo(tokenizer, self.model_config, chat_template).to_dict()
             return TokenizerInfoResponse(**info)
         except Exception as e:
+            logger.exception("Failed to get tokenizer info.")
             return self.create_error_response(
-                f"Failed to get tokenizer info: {str(e)}")
+                f"Failed to get tokenizer info: {e!s}")
 
 
 class TokenizerInfo:
@@ -190,20 +192,23 @@ class TokenizerInfo:
     def _get_tokenizer_config(self) -> Dict[str, Any]:
         """Get tokenizer configuration directly from the tokenizer object."""
         config = dict(self.tokenizer.init_kwargs) if hasattr(self.tokenizer, 'init_kwargs') and self.tokenizer.init_kwargs else {}
-        
         # Remove file path fields
         config.pop('vocab_file', None)
         config.pop('merges_file', None)
-        
+        # Remove chat_template from tokenizer's init_kwargs - we'll add it back conditionally
+        config.pop('chat_template', None)
         config = self._make_json_serializable(config)
         config['tokenizer_class'] = self.tokenizer.__class__.__bases__[0].__name__
-        if self.chat_template:
+        # Only include chat_template if explicitly requested (self.chat_template will be None when not requested)
+        if self.chat_template is not None:
             config['chat_template'] = self.chat_template
         return config
 
-    def _make_json_serializable(self, obj):
+    def _make_json_serializable(self, obj: Any) -> Any:
         """Convert any non-JSON-serializable objects to serializable format."""
-        if hasattr(obj, 'content'): 
+        # This is a special case to handle AddedToken objects, which are not
+        # directly JSON-serializable but have a 'content' attribute.
+        if hasattr(obj, 'content'):
             return obj.content
         elif isinstance(obj, dict):
             return {k: self._make_json_serializable(v) for k, v in obj.items()}
